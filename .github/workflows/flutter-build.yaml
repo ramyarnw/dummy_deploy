@@ -1,0 +1,105 @@
+name: 🔨 Flutter Build
+
+on:
+  workflow_call:
+    inputs:
+
+      # the flutter channel to use
+      flutter_channel:
+        required: false
+        type: string
+        default: "stable"
+
+      # the flutter version to be installed
+      flutter_version:
+        required: false
+        type: string
+        default: ""
+
+      # the workflow os
+      runs_on:
+        required: false
+        type: string
+        default: "ubuntu-latest"
+
+      # command to run after flutter setup
+      setup:
+        required: false
+        type: string
+        default: ""
+
+      # working directory for the commands, usually the respective package directory
+      working_directory:
+        required: false
+        type: string
+        default: "."
+
+      # type of build, one of [web,apk,appbundle,ios,ipa,macos,linux,windows]
+      type:
+        required: true
+        type: string
+
+      # flavor passed to --flavor flag during flutter build
+      flavor:
+        required: false
+        type: string
+        default: "dev"
+
+      # Type of build, dev, staging or prod
+      build_type:
+        required: false
+        type: string
+        default: "dev"
+
+      # Environment to build, basically used to pick the entry point for flutter build
+      env:
+        required: false
+        type: string
+        default: "dev"
+
+      # package name used with melos run command
+      package:
+        required: true
+        type: string
+
+    # secrets
+    secrets:
+      fastlane_env:
+        required: false
+      fastlane_dev_env:
+        required: false
+      fastlane_stage_env:
+        required: false
+      fastlane_prod_env:
+        required: false
+      appstore_api_key_json:
+        required: false
+
+jobs:
+  build:
+    defaults:
+      run:
+        working-directory: ${{inputs.working_directory}}
+
+    runs-on: ${{inputs.runs_on}}
+    if: ${{ (inputs.env == 'dev' && github.ref != 'refs/heads/stage' && github.ref != 'refs/heads/prod') || (github.ref == 'refs/heads/stage' && inputs.build_type == 'stage') || (github.ref == 'refs/heads/prod' && inputs.build_type == 'prod') }}
+    steps:
+      - name: 📚 Git Checkout
+        uses: actions/checkout@v4
+      - name: ⚙️ Flutter Setup
+        uses: ./.github/workflows/flutter
+        with:
+          flutter_channel: ${{ inputs.flutter_channel }}
+          flutter_version: ${{ inputs.flutter_version }}
+          setup: ${{ inputs.setup }}
+
+      - name: 🔨 Flutter Build
+        run: TYPE=${{ inputs.type }} FLAVOR=${{ inputs.flavor }} ENV=${{ inputs.env }} flutter pub global run melos run build:${{ inputs.package }}
+      - name: 📦 Archive Web Artifact
+        uses: actions/upload-artifact@master
+        if: ${{ inputs.type == 'web' }}
+        with:
+          name: web-build
+          path: ${{ inputs.working_directory }}/build/web
+
+

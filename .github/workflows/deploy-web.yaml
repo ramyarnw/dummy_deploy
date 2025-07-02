@@ -1,0 +1,62 @@
+name: 🚀 Deploy Web
+
+on:
+  workflow_call:
+    inputs:
+      artifact_name:
+        required: false
+        type: string
+        default: "web-build"
+      target:
+        required: false
+        type: string
+        default: "dev"
+      env:
+        required: false
+        type: string
+        default: "dev"
+      runs_on:
+        required: false
+        type: string
+        default: "ubuntu-latest"
+      working_directory:
+        required: true
+        type: string
+        default: "."
+      project_id:
+        required: true
+        type: string
+        default: "dev"
+      build_type:
+        required: true
+        type: string
+        default: "dev"
+    secrets:
+      GCP_SA_KEY:
+        required: true
+
+
+jobs:
+  deploy_to_firebase:
+    defaults:
+      run:
+        working-directory: ${{inputs.working_directory}}
+
+    runs-on: ${{inputs.runs_on}}
+    if: ${{ (inputs.env == 'dev' && github.ref != 'refs/heads/stage' && github.ref != 'refs/heads/prod') || (github.ref == 'refs/heads/stage' && inputs.build_type == 'stage') || (github.ref == 'refs/heads/prod' && inputs.build_type == 'prod') }}
+    steps:
+      - name: 🔀 Checkout Repo
+        uses: actions/checkout@master
+      - name: 📦️ Download Artifact
+        uses: actions/download-artifact@master
+        with:
+          name: ${{ inputs.artifact_name }}
+          path: ${{ inputs.working_directory}}/public/${{ inputs.target }}
+      - name: 🚀 Deploy to Firebase
+        uses: w9jds/firebase-action@master
+        with:
+          args: deploy --only hosting:${{inputs.target}}
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+          PROJECT_ID: ${{ inputs.project_id }}
+          PROJECT_PATH: ${{ inputs.working_directory }}
