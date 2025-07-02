@@ -1,0 +1,34 @@
+name: 📱 Pebl
+on:
+  workflow_dispatch:
+#  push:
+#    paths:
+#      - 'dummy/**'
+#    branches:
+#      - dev
+#      - stage
+#      - master
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+    name: Build dummy
+    uses: ./.github/workflows/flutter-build.yaml
+    with:
+      flutter_channel: stable
+      setup: flutter doctor --verbose
+
+  deploy:
+    strategy:
+
+    name: Deploy dummy to Firebase Hosting
+    needs: build
+    uses: ./.github/workflows/deploy-web.yaml
+    with:
+      artifact_name: web-build
+      working_directory: "./dummy_firebase"
+      project_id: ${{ matrix.build }}
+      runs_on: ubuntu-latest
+    secrets:
+      gcp_sa_key: ${{ (matrix.build == 'dev' && secrets.DEV_GCP_SA_KEY) || (matrix.build == 'stage' && secrets.STAGE_GCP_SA_KEY) || (matrix.build == 'prod' && secrets.PROD_GCP_SA_KEY) }}
