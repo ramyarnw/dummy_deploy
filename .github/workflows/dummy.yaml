@@ -1,4 +1,4 @@
-name: 📱 Pebl
+name: 📱 dummy
 on:
   workflow_dispatch:
 #  push:
